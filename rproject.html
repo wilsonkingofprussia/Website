@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Releases Data Analysis</title>
+    <style>
+        #toc {
+        background-color: #f9f9f9;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        max-width: 300px;
+        }
+        #toc ul {
+        list-style-type: none;
+        padding-left: 20px;
+        }
+        #toc li {
+        margin: 5px 0;
+        }
+        #toc a {
+        text-decoration: none;
+        color: #007BFF;
+        }
+        #toc a:hover {
+        text-decoration: underline;
+        }
+      </style>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="rproject.html">Data Analysis of Bandai Product Releases</a></li>
+                <li><a href="database.html">Shopping Mall Database</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <header>
+                <h1>Wilson Lair</h1>
+                <p>Senior Computer Science Major at the University of Texas at Dallas</p>
+            <div class="header-left">
+                    <a href="https://www.linkedin.com/in/wilson-lair-4a2b03264" target="_blank">LinkedIn</a> | 
+                    <a href="https://github.com/wilsonkingofprussia" target="_blank">GitHub</a>
+            </div>
+                
+            </header>
+            <section>
+            <!-- First trend-->
+            <h1>Data Analysis of Bandai Product Releases</h1>
+            <div id="toc"></div>
+            <h2>Executive Summary</h2>
+            <h3>Key Technologies and Methods</h3>
+            <p>This analysis utilized the R programming language to explore and model data trends effectively. Key techniques and tools include:</p>
+            <ul>
+                <li><b>Statistical Modeling:</b> Fitted linear, quadratic, cubic, generalized additive (GAM), and piecewise regression models to identify patterns and relationships in the data.</li>
+                <li><b>Data Manipulation and Transformation:</b> Leveraged the <b>dplyr</b> package for efficient data cleaning and transformation, including log transformations for response variables.</li>
+                <li><b>Visualization:</b> Created insightful visualizations using both base R and the <b>ggplot2</b> package to communicate results clearly.</li>
+                <li><b>Model Evaluation:</b> Assessed model performance through residual analysis, multicollinearity diagnostics (e.g., VIF checks), and correlation coefficients.</li>
+                <li><b>Statistical Testing:</b> Performed hypothesis testing with Mann-Whitney U tests, Wilcoxon tests, and t-tests to validate findings.</li>
+                <li><b>Advanced Model Insights:</b> Employed the <b>gratia</b> package for slope analysis of complex models using calculus principles.</li>
+            </ul>
+            <h3>Trends Found</h3>
+            <ol>
+                <li><b>Declining Production of New Molds</b></li>
+                <p>Analysis revealed a significant decline in the production of new and heavily modified molds starting in 2012, with an 86.8% drop from the peak. This aligns with shifts in consumer demand and the performance of related media franchises. This insight can be used to anticipate market saturation and strategically allocate resources toward innovative product lines or alternative intellectual properties to sustain revenue growth.</p>
+                <li><b>Price Comparisons Between Retail and Exclusive Releases</b></li>
+                <p>Contrary to expectations, there was insufficient evidence to conclude that exclusive releases are priced higher than retail releases for unique model kits after accounting for time-based price trends. However, exclusive color variants were shown to have a statistically significant higher average price difference from their base models than retail variants. These findings highlight the potential for exclusive offerings to drive higher price margins, supporting strategies to differentiate products and create premium-tier experiences for dedicated customers.</p>
+                <li><b>Impact of Release Timing on Pricing</b></li>
+                <p>The analysis demonstrated the importance of controlling for the "date effect" when comparing prices over time, particularly in industries influenced by inflation and changing consumer preferences. These methods can be leveraged to develop dynamic pricing models that reflect market conditions accurately and competitively.</p>
+            </ol>
+            <h2>Introduction</h2>
+            <p>Bandai Spirits is a manufacturer of model kits. This data analysis is done on a dataset of their flagship line of model kits, the Master Grade (MG). This data analysis investigates three key aspects of MG model kits: the number of releases, price trends, and the exclusivity of online webstore (PB) releases. This analysis is complicated by the engineering of these model kits. Many releases share parts or runners from previous kits. Due to this, I have categorized each kit into four molding types: new, major variant, minor variant, and color variant. These classifications provide a clearer understanding of true release trends and price differences.</p>
+            <h3>Cleaning Data</h3>
+            <p>The dataset combines information from multiple sources: separate CSV files for retail and exclusive releases, augmented with additional data on molding types for deeper analysis. Several transformations were required to prepare the data for analysis:</p>
+            <ul>
+                <li><b>Formatting Adjustments:</b> Dates, prices, and release numbers were reformatted into analyzable formats.</li>
+                <li><b>Filtering:</b> Irrelevant entries, such as accessory packs, multi-kit sets, and special coating variants, were removed to prevent skewed results.</li>
+                <li><b>Inflation Adjustment:</b> Prices were adjusted for inflation using Japan’s Consumer Price Index (CPI) to ensure valid comparisons over the nearly 30-year range of release dates.</li>
+            </ul>
+            <pre><code>
+#retail data
+retail <- read.csv("MGs - Retail.csv", na.strings=c("",NA))
+Retail_data <-read.csv("Retail MG Extra Data.csv", na.strings=c("",NA))
+retail <- subset(retail, select = -c(Dalong.s.Point))
+colnames(retail) <- c('ID', 'name', 'date', 'runners', 'parts', 'price', 'box')
+colnames(Retail_data) <- c('mold', 'base', 'coating')
+
+#fix date format
+year_month <- as.character(retail$date)
+year <- as.numeric(substr(year_month, 1, 2))
+month <- as.numeric(substr(year_month, 4, 5))
+year[year >= 95 & year <= 99] <- year[year >= 95 & year <= 99] + 1900
+year[year < 26] <- year[year < 26] + 2000
+date_converted <- as.Date(paste(year, month, "01", sep = "-"))
+retail$date <- date_converted
+
+#fix ID format
+retail$ID <- sapply(retail$ID, function(x) {
+    num <- as.integer(sub("M", "", x))  # Extract numeric part
+    sprintf("MG-%03d", num)  # Format as MG-YYY
+})
+
+#add extra data to retail
+retail <- cbind(retail, Retail_data)
+
+#clean PB data
+PB <- read.csv("MGs - PB.csv", na.strings=c("",NA))
+PB_data <- read.csv("PB Extra Data.csv", na.strings=c("",NA))
+PB <- subset(PB, Grade %in% "MG")
+PB$Price <- gsub("¥|,", "", PB$Price)
+PB$Price <- as.integer(PB$Price)
+PB$Date <- as.Date(paste0(PB$Release, "/01"), format = "%Y/%m/%d")
+PB <- subset(PB, select = -c(Number, Release, Grade))
+colnames(PB) <- c('ID', 'name', 'price', 'date')
+colnames(PB_data) <- c('mold', 'base', 'coating')
+PB <- cbind(PB, PB_data)
+
+#merge data frames
+retail$retail <- "Retail"
+PB$retail <- "PB"
+PB$runners <- NA
+PB$parts <- NA
+PB$box <- NA
+df <- rbind(retail, PB)
+
+#remove irrelevant rows
+df <- subset(df, !mold %in% c("set", "MGEX", "accessory", "coating"))
+
+#cpi data
+cpi <- read.csv("CPI.csv")
+colnames(cpi) <- c("year", "cpi")
+cpi_2024 <- data.frame(2024, 114.573)
+names(cpi_2024) = c("year", "cpi")
+cpi <- rbind(cpi, cpi_2024)
+
+#adjust prices for inflation
+df$year <- format(df$date, "%Y")
+df$year <- as.integer(df$year)
+df <- merge(df, cpi, by = "year")
+cpi_base <- cpi$cpi[cpi$year == 2024]
+df$price_2024 <- df$price * (cpi_base / df$cpi)
+df <- df[, -which(names(df) == "cpi")]
+            </code></pre>
+            <h2>Analysis of Prices</h2>
+            <p>This section examines two main trends:</p>
+                <ol>
+                    <li><b>Prices Over Time:</b> The evolution of prices adjusted for inflation.</li>
+                    <li><b>Price Comparison by Release Type:</b> Contrasting retail and exclusive (PB) release prices.</li>
+                </ol>
+            <p>All prices are represented in 2024 Japanese Yen. To ensure accurate comparisons, the analysis considers the molding type:</p>
+            <ul>
+                <li><b>Significant Releases:</b> New moldings and major variants, which introduce substantial design changes, are analyzed to track trends in unique releases.</li>
+                <li><b>Color Variants:</b> These reuse existing molds with different pigments. They are analyzed separately to avoid double-counting.</li>
+                <li><b>Excluded Categories:</b> Minor variants are excluded due to inconsistent changes, and special coating variants, identified as outliers, are removed for fair comparison.</li>
+            </ul>
+            <p>This methodology ensures a comprehensive and precise exploration of price trends across the MG model kit lineup.</p>
+            <h3>Adjusted Prices Over Time for Unique Releases</h3>
+            <p>This section explores the relationship between inflation-adjusted prices of unique Master Grade (MG) releases and their release dates. A linear model was initially fitted to assess this relationship. While the direction of the trend appeared correct, the fit was suboptimal, with an R-squared value of 0.176, and the residuals plot showed imbalance along the y-axis, indicating potential issues with model performance.</p>
+            <pre><code>
+#analysis of prices for unique releases:
+unique_df <- subset(df, mold %in% c("major", "new"))
+
+#remove factors that will skew data (coating)
+unique_df <- subset(unique_df, coating != "Yes")
+
+#perform linear regression
+model <- lm(price_2024 ~ date, data = unique_df)
+
+#summary of model
+summary(model)
+
+#visualize regression line
+plot(unique_df$date, unique_df$price_2024, 
+        main = "Inflation-Adjusted Prices Over Time",
+        xlab = "Date", ylab = "Price (2024 adjusted)",
+        pch = 16, col = "blue")
+mtext("New and Heavily Modified Molding", side = 3, line = 0.5)
+abline(model, col = "red", lwd = 2)
+
+#residual analysis
+plot(model$residuals, main = "Residuals Plot", xlab = "Index", ylab = "Residuals")
+abline(h = 0, col = "red")
+            </code></pre>
+            <a href="graphs/old price over time significant.png" target="_blank">
+                <img src="graphs/old price over time significant.png" alt="Adjusted prices of unique molding old model" width="500" />
+            </a>
+            <a href="graphs/old residuals plot price significant.png" target="_blank">
+                <img src="graphs/old residuals plot price significant.png" alt="Residuals plot of old model" width="500" />
+            </a>
+            <pre><code>
+> summary(model)
+
+Call:
+lm(formula = price_2024 ~ date, data = unique_df)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-2295.9 -1077.4  -601.1   311.9 15376.7 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -76.16193  947.10397  -0.080    0.936    
+date          0.37090    0.06426   5.772 4.11e-08 ***
+---
+Signif. codes:  
+0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 2126 on 156 degrees of freedom
+Multiple R-squared:  0.176,	Adjusted R-squared:  0.1707 
+F-statistic: 33.31 on 1 and 156 DF,  p-value: 4.11e-08
+            </code></pre>
+            <p>To address the issues with variance and fit, the response variable “price_2024” was log-transformed. This transformation stabilized the variance and improved the overall model fit.</p>
+            <pre><code>
+#log-transform response variable and fit linear model
+unique_df$log_price <- log(unique_df$price_2024)
+model_log <- lm(log_price ~ date, data = unique_df)
+
+#summary of model
+summary(model_log)
+
+#correlation coefficient
+unique_df$date_numeric <- as.numeric(unique_df$date)
+correlation <- cor(unique_df$date_numeric, unique_df$log_price)
+print(paste("Correlation coefficient:", correlation))
+
+#visualize regression line
+plot(unique_df$date, unique_df$log_price, 
+        main = "Inflation-Adjusted Prices Over Time",
+        xlab = "Date", ylab = "log-transformed price",
+        pch = 16, col = "blue")
+mtext("New and Heavily Modified Molding", side = 3, line = 0.5)
+abline(model_log, col = "red", lwd = 2)
+
+#residual analysis
+plot(model_log$residuals, main = "Residuals Plot", xlab = "Index", ylab = "Residuals")
+abline(h = 0, col = "red")
+            </code></pre>
+            <a href="graphs/new model price significant.png" target="_blank">
+                <img src="graphs/new model price significant.png" alt="Adjusted prices of unique molding new model" width="500" />
+            </a>
+            <a href="graphs/new model residuals price significant.png" target="_blank">
+                <img src="graphs/new model residuals price significant.png" alt="Residuals plot of new model" width="500" />
+            </a>
+            <pre><code>
+> summary(model_log)
+
+Call:
+lm(formula = log_price ~ date, data = unique_df)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.63388 -0.17277 -0.07752  0.11573  1.26413 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 7.485e+00  1.308e-01  57.217  < 2e-16 ***
+date        7.056e-05  8.877e-06   7.949 3.53e-13 ***
+---
+Signif. codes:  
+0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.2937 on 156 degrees of freedom
+Multiple R-squared:  0.2883,	Adjusted R-squared:  0.28
+
+"Correlation coefficient: 0.536918000190214"
+            </code></pre>
+            <p>The updated model with the log-transformed response variable demonstrated:</p>
+            <ul>
+                <li>Improved residual balance and reduced skewness. Performance metrics like R-squared and median residual indicate a better representation of the data.</li>
+                <li>An R-squared of 0.2883, indicating that 28.83% of the variance in price is explained by the model.</li>
+                <li>A slope estimate of 7.056e−5, suggesting a daily price increase of about 0.0071%, equivalent to approximately 2.6% per year.</li>
+                <li>A highly significant p-value (< 0.001) for the slope, confirming the strong relationship between date and price.</li>
+                <li>A correlation coefficient of 0.537, indicating a moderate positive linear relationship.</li>
+            </ul>
+            <p>This is a weak fit for this simple linear regression, but not bad for a dataset where there could be multiple factors at play, such as size or complexity. Despite these improvements, I want to test these to see if accounting for other factors can improve the model.</p>
+            <h3>Introducing Covariates</h3>
+            <p>To better isolate the effect of time on price, a multiple regression model was fitted using additional covariates: box volume, number of parts, and number of runners. These factors were included to control for variations in model kit size and complexity. However, this data was only available for retail releases, which still constituted the majority of the dataset. Box sizes were converted to volumes based on provided dimensions.</p>
+            <pre><code>
+#retail only
+retail <- subset(unique_df, retail %in% c("Retail"))
+
+#remove factors that will skew data (coating)
+retail <- subset(retail, coating != "Yes")
+
+#correlation for runners and parts
+cor_runners <- cor(retail$runners, retail$price_2024, use = "complete.obs")
+cor_parts <- cor(retail$parts, retail$price_2024, use = "complete.obs")
+cat("Correlation between price_2024 and runners:", cor_runners, "\n")
+cat("Correlation between price_2024 and parts:", cor_parts, "\n")
+
+#graph for runners and parts
+library(ggplot2)
+ggplot(retail, aes(x = runners, y = price_2024)) +
+    geom_point(color = "blue") +
+    geom_smooth(method = "lm", color = "red", se = FALSE) +
+    ggtitle(paste("Runners vs Price (Correlation:", round(cor_runners, 2), ")")) +
+    labs(x = "Number of Runners",
+        y = "Price (2024)") +
+    theme_minimal()
+ggplot(retail, aes(x = parts, y = price_2024)) +
+    geom_point(color = "green") +
+    geom_smooth(method = "lm", color = "red", se = FALSE) +
+    ggtitle(paste("Parts vs Price (Correlation:", round(cor_parts, 2), ")")) +
+    labs(x = "Number of Parts",
+        y = "Price (2024)") +
+    theme_minimal()
+
+#calculate volume from box size
+box_sizes <- data.frame(
+    box = c("A0", "A1", "A2", "B0", "B1", "C0", "D00", "D0", "D1", "D2", "D3", "D4", "D5", "E0", "E1", "F0"),
+    volume = c(
+    310 * 200 * 80,
+    310 * 200 * 100,
+    310 * 200 * 110,
+    310 * 240 * 85,
+    310 * 240 * 110,
+    330 * 240 * 120,
+    390 * 310 * 65,
+    390 * 310 * 80,
+    390 * 310 * 91,
+    390 * 310 * 106,
+    390 * 310 * 110,
+    390 * 310 * 120,
+    390 * 310 * 140,
+    590 * 320 * 115,
+    590 * 390 * 115,
+    NA  # Assign NA for "F0" as it is large undefined value
+    )
+)
+
+#merge with retail data
+retail <- merge(retail, box_sizes, by = "box")
+
+#compute correlation
+# Exclude rows with NA volumes (F0)
+retail_filtered <- subset(retail, !is.na(volume))
+
+#calculate correlation coefficient
+correlation <- cor(retail_filtered$price_2024, retail_filtered$volume, method = "pearson")
+
+#graph
+ggplot(retail_filtered, aes(x = volume, y = price_2024)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "blue") +
+    ggtitle(paste("Box Volume vs Price (Correlation:", round(correlation, 2), ")")) +
+    labs(
+         x = "Box Volume (mm^3)",
+         y = "Price (2024)") +
+    theme_minimal()
+            </code></pre>
+            <a href="graphs/runners vs price.png" target="_blank">
+                <img src="graphs/runners vs price.png" alt="Correlation of Runners and Price" width="500" />
+            </a>
+            <a href="graphs/parts vs price.png" target="_blank">
+                <img src="graphs/parts vs price.png" alt="Correlation of Parts and Price" width="500" />
+            </a>
+            <a href="graphs/box volume vs price.png" target="_blank">
+                <img src="graphs/box volume vs price.png" alt="Correlation of Box Volume and Price" width="500" />
+            </a>
+            <p>The correlation coefficients provide a good initial sense of the strength of relationship between the factors and price. All of them are high. However, they don’t account for potential interactions or overlaps between the predictors. To evaluate the contributions of each predictor to the price, I will now fit an initial multiple linear regression model.</p>
+            <pre><code>
+#initial multiple linear regression model
+model <- lm(log(price_2024) ~ date + volume + runners + parts, data = retail_filtered)
+
+#summary
+summary(model)
+
+#check for multicollinearity
+library(car)
+vif_values <- vif(model)
+print(vif_values)
+            </code></pre>
+            <pre><code>
+> summary(model)
+
+Call:
+lm(formula = log(price_2024) ~ date + volume + runners + parts, 
+    data = retail_filtered)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.31555 -0.07849 -0.01045  0.08197  0.32420 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 7.292e+00  5.653e-02 128.996  < 2e-16 ***
+date        3.629e-05  4.191e-06   8.660 1.07e-14 ***
+volume      3.881e-08  3.977e-09   9.759  < 2e-16 ***
+runners     2.197e-03  3.732e-03   0.589   0.5570    
+parts       6.340e-04  1.659e-04   3.821   0.0002 ***
+---
+Signif. codes:  
+0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.1156 on 139 degrees of freedom
+Multiple R-squared:  0.8648,	Adjusted R-squared:  0.8609 
+F-statistic: 222.3 on 4 and 139 DF,  p-value: < 2.2e-16
+
+
+> print(vif_values)
+    date   volume  runners    parts 
+1.207656 3.298955 5.186565 3.892373 
+            </code></pre>
+            <p>The p-values indicate that the predictors date, volume, and parts are all very statistically significant, while the runners predictor is not significant. The VIF value tests for multicollinearity, which could distort the regression results. Date has very low multicollinearity, which is good since this is my primary variable of interest. Volume and parts show moderate multicollinearity but are still within acceptable ranges. Generally, a VIF value above 5 indicates problematic multicollinearity, which is what we see with the runners. Due to this and the p-value, I am going to omit it from my final model.</p>
+            <pre><code>
+#final model
+model <- lm(log(price_2024) ~ date + volume + parts, data = retail_filtered)
+
+#analysis
+summary(model)
+vif_values <- vif(model)
+print(vif_values)
+
+#plot
+library(car)
+avPlots(model, col="Red", col.lines="green", pch=16, lwd=2)
+plot(model$residuals, main = "Residuals Plot", xlab = "Index", ylab = "Residuals")
+abline(h = 0, col = "red")
+            </code></pre>
+            <a href="graphs/avplots.png" target="_blank">
+                <img src="graphs/avplots.png" alt="Final Multiple Regression Linear Model" width="500" />
+            </a>
+            <a href="graphs/final model residuals.png" target="_blank">
+                <img src="graphs/final model residuals.png" alt="Added Variable Plots of Multiple Regression Linear Model" width="500" />
+            </a>
+            <pre><code>
+> summary(model)
+
+Call:
+lm(formula = log(price_2024) ~ date + volume + parts, data = retail_filtered)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.32172 -0.07480 -0.01148  0.07433  0.33120 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 7.290e+00  5.624e-02 129.613  < 2e-16 ***
+date        3.679e-05  4.096e-06   8.982 1.61e-15 ***
+volume      4.001e-08  3.409e-09  11.735  < 2e-16 ***
+parts       6.910e-04  1.345e-04   5.138 9.16e-07 ***
+---
+Signif. codes:  
+0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.1153 on 140 degrees of freedom
+Multiple R-squared:  0.8644,	Adjusted R-squared:  0.8615 
+F-statistic: 297.6 on 3 and 140 DF,  p-value: < 2.2e-16
+
+> print(vif_values)
+    date   volume    parts 
+1.158775 2.435654 2.569250 
+            </code></pre>
+            <p>The final model effectively isolates the impact of time on price, accounting for key confounding factors like box volume and parts count. Both control variables (volume and parts) are highly significant (p < 2e-16 and p = 9.16e-07 respectively), suggesting they're important to include. The VIF values for each predictor are well below 5, indicating minimal multicollinearity concerns. The results show a significant positive relationship between date and price, independent of kit size and complexity. The adjusted R-squared of 0.8615 highlights the model's strong explanatory power, and the residuals plot confirms homoscedasticity. This robust analysis underscores the steady increase in MG model kit prices over time.</p>
+            
+            <h3>Comparing Prices of Retail and Exclusive Releases for Unique Model Kits</h3>
+            <p>In this section, I aim to compare the prices between retail releases and exclusive webstore releases for unique model kits. This analysis is complicated by the limited number and uneven distribution of exclusive releases. To illustrate this, I will use <b>ggplot</b> to visualize the data.</p>
+            <pre><code>
+library(ggplot2)
+ggplot(unique_df, aes(x = date, y = price_2024, color = retail)) +
+    geom_point() +
+    labs(title = "Retail vs Exclusive Release Prices", x = "Year", y = "Price (2024 JPY)", color = "Release", subtitle = "New and Heavily Modified Molding") +
+    theme_minimal()
+            </code></pre>
+            <a href="graphs/Distribution of Retail and Exclusive Significant Releases.png" target="_blank">
+                <img src="graphs/Distribution of Retail and Exclusive Significant Releases.png" alt="Distribution of Retail and Exclusive Significant Releases" width="500" />
+            </a>
+            <p>As the plot reveals, the number of exclusive releases is relatively small and heavily clustered within the last five years of the dataset. This clustering introduces a potential bias due to the date effect demonstrated in the previous section. To address this, I will go with a non-parametric approach using the Mann-Whitney U test. This test is suitable for small sample sizes, unequal group sizes, and non-normal distributions.</p>
+            <p>To control for the date effect, I first regress the log-transformed prices on the date using a linear model. As previously stated, my dataset for exclusive releases does not have information on box size or parts count, so only date can be accounted for. Then, I utilize the residuals from this regression in the Mann-Whitney U test. The null hypothesis states that exclusive releases do not have higher prices than retail releases, while the alternative hypothesis posits that exclusive release prices are higher.</p>
+            <pre><code>
+#get residuals-price variations after accounting for date
+unique_df$price_residuals <- residuals(model_log)
+
+#Mann-Whitney U test on the residuals
+wilcox_result <- wilcox.test(price_residuals ~ retail, 
+    data = unique_df,
+    alternative = "less")  # Tests if Retail < PB
+print(wilcox_result)
+            </code></pre>
+            <pre><code>
+         Wilcoxon rank sum test with continuity correction
+
+data:  price_residuals by retail
+W = 813, p-value = 0.5136
+alternative hypothesis: true location shift is less than 0
+            </code></pre>
+            <p>The p-value of 0.5136 far exceeds any typical significance level, indicating insufficient evidence to reject the null hypothesis. This suggests that exclusive release prices are not statistically higher than retail prices, after accounting for the date effect.</p>
+            <p>One potential reason for this result is the small sample size of exclusive releases. The limited number of unique exclusive model kits makes it difficult to detect a meaningful difference. Expanding the dataset to include other model lines could improve the robustness of this analysis. However, for this particular line, the data does not support a significant difference in price between retail and exclusive releases.</p>
+            
+            <h3>Comparing Prices of Retail and Exclusive Releases in Color Variants</h3>
+            <p>In this section, I analyze the pricing differences of color variants—model kits that use the same molding as their base models but are injected with differently pigmented plastic. Because the molding remains unchanged, the date effect identified earlier as well as box volume and kit complexity should not influence the results. By merging the dataset with itself using the ID of the base model kit, I calculated the price differences between color variants and their base kits. The goal is to examine overall pricing differences and to compare whether retail or exclusive releases charge more for color variants.</p>
+            <pre><code>
+#color variant prices
+price_df <- df[df$mold == "color", ]
+price_df <- subset(price_df, coating != "Yes")
+merged_df <- merge(price_df, df, by.x = "base", by.y = "ID", suffixes = c("_variant", "_base"))
+merged_df$price_diff <- merged_df$price_variant - merged_df$price_base
+retail_diff <- merged_df[merged_df$retail_variant == "Retail", ]
+pb_diff <- merged_df[merged_df$retail_variant == "PB", ]
+
+# Summary statistics
+summary(retail_diff$price_diff)
+summary(pb_diff$price_diff)
+
+# T-test to compare price differences
+t_test <- t.test(retail_diff$price_diff, pb_diff$price_diff)
+t_test
+boxplot(price_diff ~ retail_variant, data = merged_df, 
+        main = "Price Difference: Retail vs. Exclusive",
+        xlab = "Release Type", ylab = "Price Difference")
+mtext("Color Variants", side = 3, line = 0.5)
+            </code></pre>
+            <p>The boxplot below illustrates the distribution of price differences for retail and exclusive releases:</p>
+            <a href="graphs/Color Variant Price Difference.png" target="_blank">
+                <img src="graphs/Color Variant Price Difference.png" alt="box plot of color variant prices" width="500" />
+            </a>
+            <pre><code>
+> summary(retail_diff$price_diff)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   -500       0       0      60     100     500 
+> summary(pb_diff$price_diff)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    0.0     0.0     0.0   196.4   300.0  1500.0 
+
+        Welch Two Sample t-test
+
+data:  retail_diff$price_diff and pb_diff$price_diff
+t = -2.2422, df = 68.265, p-value = 0.0282
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -257.83848  -15.01866
+sample estimates:
+mean of x mean of y 
+  60.0000  196.4286 
+            </code></pre>
+            <p>The summary statistics reveal that both retail and exclusive color variants have a median price difference of 0 yen compared to their base models, indicating that most color variants are priced identically to their bases. However, while the average price difference for retail color variants is 60 yen, exclusive color variants are, on average, 196 yen more expensive than their base models—a difference of 136 yen.</p>
+            <p>The Welch two-sample t-test supports this observation, yielding a statistically significant p-value of 0.0282 (p < 0.05). The 95% confidence interval suggests that exclusive color variants cost between 15 and 258 yen more than their base models compared to retail variants.</p>
+            <p>This difference may reflect a distinct pricing strategy employed by exclusive outlets, where limited availability or perceived exclusivity allows for a premium. However, further investigation into factors like production volume, market demand, or other exclusive release characteristics is needed to fully understand this pricing disparity.</p>
+            <h2>Frequency of Releases for New Molds</h2>
+            <p>In this section, I analyze the frequency of model kit releases over time to test the hypothesis that releases of new or heavily modified molds have declined. This focus on new molds eliminates the confounding factor of injection color variants, which can be produced at any time using existing molds. Additionally, the year 2025 was excluded from the analysis since it is incomplete at the time of this study. Using the <b>dplyr</b> package, I aggregated the data by year to calculate the annual number of releases.</p>
+            <p>To investigate this trend, I initially employed a segmented nonlinear model, which allows for piecewise linearity and explicitly identifies a breaking point in the data.</p>
+            <pre><code>
+#analysis of prices for unique releases:
+unique_df <- subset(df, mold %in% c("major", "new"))
+
+#get year of release date
+unique_df$year <- format(unique_df$date, "%Y")
+unique_df$year <- as.integer(unique_df$year)
+
+#remove 2025 as it is incomplete
+unique_df <- unique_df[unique_df$year != 2025, ]
+
+#aggregate data
+library(dplyr)
+releases_per_year <- unique_df %>%
+  group_by(year) %>%
+  summarize(count = n())
+
+#fit the initial linear model
+initial_model <- lm(count ~ year, data = releases_per_year)
+
+#piecewise regression
+library(segmented)
+seg_model <- segmented(initial_model, seg.Z = ~year, psi = 2020)
+summary(seg_model)
+
+#plot
+plot(releases_per_year$year, releases_per_year$count, type = "o", 
+     xlab = "Year", ylab = "Number of Releases", main = "Model Kit Releases Over Time")
+mtext("New and Heavily Modified Molding", side = 3, line = 0.5)
+lines(releases_per_year$year, fitted(seg_model), col = "blue", lwd = 2)
+            </code></pre>
+            <a href="graphs/segmented linear model.png" target="_blank">
+                <img src="graphs/segmented linear model.png" alt="The segmented linear model" width="500" />
+            </a>
+            <pre><code>
+        ***Regression Model with Segmented Relationship(s)***
+
+Call: 
+segmented.lm(obj = initial_model, seg.Z = ~year, psi = 2020)
+
+Estimated Break-Point(s):
+               Est. St.Err
+psi1.year 2012.435  1.795
+
+Coefficients of the linear terms:
+              Estimate Std. Error t value Pr(>|t|)   
+(Intercept) -606.34159  194.82271  -3.112  0.00447 **
+year           0.30547    0.09724   3.141  0.00416 **
+U1.year       -0.89288    0.20370  -4.383       NA   
+---
+Signif. codes:  
+0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 2.14 on 26 degrees of freedom
+Multiple R-Squared: 0.4553,  Adjusted R-squared: 0.3924 
+
+Boot restarting based on 6 samples. Last fit:
+Convergence attained in 2 iterations (rel. change 7.2378e-11)
+            </code></pre>
+            <p>The segmented model identified a breaking point around mid-2012. The slope before this point was positive (p-value = 0.004), while the slope afterward was negative, indicating a decline. Although a p-value for the post-breakpoint slope was not generated due to insufficient data, the overall adjusted R-squared of the model was 0.3924. While the model captures the overall trend, its explanatory power is limited, suggesting room for improvement.</p>
+            <p>I next fit quadratic, cubic, and Generalized Additive Models (GAM) to compare their performance, using R-squared and deviance explained as criteria.</p>
+            <pre><code>
+#test nonlinear models
+fit_quadratic <- lm(count ~ poly(year, 2), data = releases_per_year)
+fit_cubic <- lm(count ~ poly(year, 3), data = releases_per_year)
+
+#fit a Generalized Additive Model 
+library(mgcv)
+gam_model <- gam(count ~ s(year), data = releases_per_year)
+summary(gam_model)
+
+#plot models
+ggplot(releases_per_year, aes(x = year, y = count)) +
+  geom_point() +
+  geom_line(aes(y = predict(fit_quadratic), color = "Quadratic Model", linetype = "Quadratic Model")) +
+  geom_line(aes(y = predict(fit_cubic), color = "Cubic Model", linetype = "Cubic Model")) +
+  geom_line(aes(y = predict(gam_model), color = "GAM Model", linetype = "GAM Model")) +
+  labs(
+    title = "Model Kit Releases Over Time",
+    y = "Releases Per Year",
+    color = "Model",
+    linetype = "Model"
+  ) +
+  scale_color_manual(
+    values = c("Quadratic Model" = "blue", "Cubic Model" = "green", "GAM Model" = "red")
+  ) +
+  scale_linetype_manual(
+    values = c("Quadratic Model" = "dashed", "Cubic Model" = "twodash", "GAM Model" = "solid")
+  )
+            </code></pre>
+            <a href="graphs/model comparison.png" target="_blank">
+                <img src="graphs/model comparison.png" alt="Comparison of models" width="500" />
+            </a>
+            <ul>
+                <li><b>Quadratic model:</b> Adjusted R-squared = 0.4426</li>
+                <li><b>Cubic model:</b> Adjusted R-squared = 0.4229</li>
+                <li><b>GAM:</b> Adjusted R-squared = 0.486, Deviance explained = 56.7%, Smooth term p-value = 0.00183</li>
+            </ul>
+            <p>The GAM provided the best fit among these models, indicating it captured the trend more accurately than the segmented model.</p>
+            <h3>Analyzing the Trend</h3>
+            <p>Using the <b>gratia</b> package, I calculated the derivatives of the fitted values from the GAM. Basic calculus principles tell us that the trend begins to decline when the derivative becomes negative, and the decline becomes statistically significant when the upper bound of the confidence interval for the derivative falls below zero.</p>
+            <pre><code>
+#get derivatives
+library(gratia)
+derivatives <- derivatives(gam_model, type = "central")
+
+#plot
+draw(derivatives) +
+    ggtitle("Derivatives of GAM Model for Release Count",
+            subtitle = "New and heavily modified molding") +
+            xlab("Year") +
+    theme_minimal()
+
+#negative trends of derivatives
+der_data <- as.data.frame(derivatives)
+negative_trend <- der_data[der_data$.derivative < 0, ]
+significant_decline <- der_data[der_data$.upper_ci < 0, ]
+
+#find when trends first become negative
+negative_trend <- negative_trend[negative_trend$year >= 2010, ]
+first_negative <- min(negative_trend$year)
+print(paste("The trend first becomes negative in:", first_negative))
+first_sig_decline <- min(significant_decline$year)
+print(paste("The decline becomes statistically significant in:", first_sig_decline))
+
+#get more detailed view of the fitted values
+pred_df <- data.frame(
+  year = seq(min(releases_per_year$year), max(releases_per_year$year), length.out = 100)
+)
+predictions <- predict(gam_model, pred_df, se.fit = TRUE)
+pred_df$fit <- predictions$fit
+pred_df$se <- predictions$se.fit
+pred_df$upper <- pred_df$fit + 1.96 * pred_df$se
+pred_df$lower <- pred_df$fit - 1.96 * pred_df$se
+
+# Find the peak year and value
+peak_year <- pred_df$year[which.max(pred_df$fit)]
+peak_value <- max(pred_df$fit)
+
+# Calculate the total decline from peak
+latest_value <- pred_df$fit[nrow(pred_df)]
+total_decline <- peak_value - latest_value
+percent_decline <- (total_decline / peak_value) * 100
+
+print(paste("Peak occurred in:", peak_year))
+print(paste("Peak value was:", peak_value))
+print(paste("Decline from peak:", round(percent_decline, 1), "%"))
+            </code></pre>
+            <pre><code>
+"The trend first becomes negative in: 2012.28282827323"
+"The decline becomes statistically significant in: 2017.8484848197"
+"Peak occurred in: 2012.28282828283"
+"Peak value was: 7.37804087712833"
+"Decline from peak: 86.8 %"
+            </code></pre>
+            <a href="graphs/smooth term derivative.png" target="_blank">
+                <img src="graphs/smooth term derivative.png" alt="Graph of the derivative of the smoooth term of the GAM" width="500" />
+            </a>
+            <p>The data shows that the number of releases peaked in 2012 before beginning a sharp decline, ultimately decreasing by 86.8% from its peak value. This significant decline aligns with historical events in the business model for model kits. These products often tie into media franchises, such as TV shows, which drive merchandise sales. For example:</p>
+            <ul>
+                <li><b>2011:</b> The release of <i>Gundam AGE</i>, a show heavily tied to planned merchandise sales, was a ratings and commercial failure. Several model kits tied to this show were canceled.</li>
+                <li><b>2014:</b> <i>Gundam Reconguista in G</i>, another original Gundam series, also failed commercially.</li>
+            </ul>
+            <p>These media failures may explain the observed decline in this line of model kits starting in 2012. It is also possible that Bandai pivoted its strategy toward other model kit lines or intellectual properties, but additional data would be needed to confirm this hypothesis.</p>
+            <p>In conclusion, the evidence strongly supports a significant and sustained decline in new mold releases for this line of model kits. This trend likely reflects broader shifts in Bandai’s business strategy and market conditions.</p>
+            <script>
+const generateTOC = () => {
+  const tocContainer = document.getElementById('toc');
+  const headers = document.querySelectorAll('h2, h3, h4, h5, h6');
+  const tocList = document.createElement('ul');
+  
+  let currentLevel = 2; // Start at h2 level
+  let currentList = tocList;
+  let listStack = [tocList]; // Stack to keep track of nested lists
+  
+  headers.forEach(header => {
+    // Generate ID if not present
+    if (!header.id) {
+      header.id = header.textContent
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-') // Handle special characters better
+        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    }
+    
+    const level = parseInt(header.tagName[1]);
+    const tocItem = document.createElement('li');
+    const tocLink = document.createElement('a');
+    
+    // Set up the link
+    tocLink.textContent = header.textContent;
+    tocLink.href = `#${header.id}`;
+    
+    // Add smooth scrolling behavior
+    tocLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById(header.id).scrollIntoView({
+        behavior: 'smooth'
+      });
+      // Update URL without jumping
+      history.pushState(null, null, `#${header.id}`);
+    });
+    
+    tocItem.appendChild(tocLink);
+    
+    // Handle hierarchy
+    if (level > currentLevel) {
+      // Create new nested list
+      const nestedList = document.createElement('ul');
+      listStack[listStack.length - 1].lastElementChild.appendChild(nestedList);
+      listStack.push(nestedList);
+      currentList = nestedList;
+    } else if (level < currentLevel) {
+      // Move back up the hierarchy
+      while (level < currentLevel && listStack.length > 1) {
+        listStack.pop();
+        currentLevel--;
+      }
+      currentList = listStack[listStack.length - 1];
+    }
+    
+    // Add the item to the current list
+    currentList.appendChild(tocItem);
+    currentLevel = level;
+  });
+  
+  // Clear existing content and append new TOC
+  tocContainer.innerHTML = '';
+  tocContainer.appendChild(tocList);
+};
+
+// Call the function when DOM is ready
+document.addEventListener('DOMContentLoaded', generateTOC);
+              </script>              
+        </section>
+        </main>
+    </div>
+</body>
+</html>

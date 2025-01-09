@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Shopping Mall Database Project</title>
+	<style>
+        #toc {
+        background-color: #f9f9f9;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        max-width: 300px;
+        }
+        #toc ul {
+        list-style-type: none;
+        padding-left: 20px;
+        }
+        #toc li {
+        margin: 5px 0;
+        }
+        #toc a {
+        text-decoration: none;
+        color: #007BFF;
+        }
+        #toc a:hover {
+        text-decoration: underline;
+        }
+      </style>
+	<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+	<div class="container">
+		<nav class="sidebar">	
+			<ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="rproject.html">Data Analysis of Bandai Product Releases</a></li>
+                <li><a href="database.html">Shopping Mall Database</a></li>
+            	</ul>
+		</nav>
+
+	<main>
+		<header>
+			<h1>Wilson Lair</h1>
+            <p>Senior Computer Science Major at the University of Texas at Dallas</p>
+			<div class="header-left">
+				<a href="https://www.linkedin.com/in/wilson-lair-4a2b03264" target="_blank">LinkedIn</a> | 
+				<a href="hhttps://github.com/wilsonkingofprussia" target="_blank">GitHub</a>
+			</div>
+			
+		</header>
+		<section>
+			<h1>Report on Shopping Mall Database Project</h1>
+			<div id="toc"></div>
+            <h2>Executive Summary</h2>
+			<p>This project involved the design and implementation of a relational database management system for the Happiness Shopping Mall. Leveraging <b>Oracle DBMS</b>, the project demonstrated proficiency in advanced database design techniques, including:</p>
+			<ul>
+				<li><b>Entity-Relationship Modeling (EER):</b> Designed an optimized schema with superclass/subclass hierarchies to reduce redundancy and improve scalability.</li>
+				<li><b>Normalization:</b> Ensured data consistency and integrity through rigorous application of <b>3NF</b> principles and dependency analysis.</li>
+				<li><b>SQL Development:</b> Created robust database objects, including tables, views, and stored procedures, to support real-world shopping mall operations.</li>
+				<li><b>Complex Data Relationships:</b> Modeled intricate business rules, such as employee supervision hierarchies, floor management, dynamic store schedules, and multi-tiered product pricing.</li>
+				<li><b>Data Analytics Readiness:</b> Designed schema extensions for tracking KPIs like customer purchase frequency and employee performance metrics.</li>
+			</ul>
+			<p>This project demonstrated practical expertise in database systems, including system design, <b>SQL</b> programming, and problem-solving for real-world business scenarios.</p>
+			<h2>Project Description</h2>
+			<p>The Happiness Shopping Mall would like one relational database to store the information about their management system to be able to carry out their work in an organized way. They have some major modules such as Person (Employee and Customer), Products and Stores.</p>
+			<p>In the system, there are Employees and Customers. Details of a Customer such as Customer ID, Name (First, Middle, Last), Address, Gender, Date of Birth and Phone numbers (one person may have more than one phone number) are recorded. </p>
+			<p>Each employee has unique Employee ID. The Employee ID must have the exact format “EXXX”, where X is a number from 0-9. More information of an Employee such as Name (First, Middle, Last), Salary, Address, Gender, Date of Birth and Phone number are recorded. Employee Must be at least 18 or older. Employee is further classified as Manager, Floor Staff and Cashier. The start date of the designation of each employee is stored. A cashier is supervised by a floor staff, and a floor staff is supervised by a Manager. A floor staff is responsible for managing the stores at a floor. Each floor staff can only manage one floor for each day, but may be assigned to manage different floors on different days. A floor managing log is created for storing such information.</p>
+			<p>There are many Stores located on different floors. Information about a store such as store ID, store name, store floor location and store type (Clothes, Food, Drink, Book and so on) are recorded. Each store opens and closes at specific times (may be different from Monday to Sunday) following a schedule table. The manager of the mall can adjust the schedule table. Stores sell various Products. A product has an ID that is only unique in each store, different stores may have different ID for the same product, and other information (such as name and description). A product may be sold in different stores at different prices. Each store has their own records about products, such as the quantity of the product in stock. </p>
+			<p>Customers can place orders in stores. Each store will maintain the detailed information about the order. Each order has unique order ID and the created time of the order is recorded. Each order may contain multiple number and multiple kinds of products. Each order also records the prices of these products and the order subtotal. Customers make the Payment of their orders with Cashiers. Payment information such as ID, payment time, method (cash, credit or debit card, membership card), amount and other information are recorded.</p>
+
+			<h3>Project Questions</h3>
+			<p>Q: Is the ability to model superclass/subclass relationships likely to be important in the management system like above? Why or why not?</p>
+			<p>A: Yes. For example, there are multiple types of employees, such as managers, floor staff, and cashiers, all of whom share most of the same attributes such as salary, dob, gender, etc. Therefore, it would be helpful in our EER model to create an Employee superclass which contains all those attributes, and anything unique to a certain employee, such as the floor number that a floor staff manages, would be represented as an attribute in the Floor Staff class’s relationship with a Floor entity. Without these superclass/subclass relationships, there would be redundancies in our model in which the reoccurring attributes would have to be mentioned several times where with a superclass/subclass relationship we only need to write those attributes once.</p>
+			<p>Q: Can you think of 5 more business rules (other than those explicitly described above) that are likely to be used in a shopping mall environment? Add your rules to the above requirement to be implemented.</p>
+			<p>A:</p>
+			<ul>
+				<li>Information for terminated employees (previously, but not currently employed people) would probably exist. If this were a requirement, then there should be an additional attribute belonging to the Employee superclass which says if a person is currently employed or not.</li>
+				<li>Because store hours can vary based on day of the week or day of the year, store_times should likely be its own weak entity with total participation in the entity set for stores, withits attributes depending on which store it is relating to.</li>
+				<li>An attribute of product which is not mentioned as a requirement but might be is the brand name of the product purchased. This should be relevant to stores because store owners might want to use sales numbers based on certain brand names to determine which they should purchase to fill their inventory (should they have to choose between two different brands which offer the same product).</li>
+				<li>An attribute of Customer that might be desirable is their # of purchases (within the entire mall AND within a store).</li>
+				<li>A supervisor might have a requirement that they've worked a certain amount of time in a subordinate role before promotion. Additionally, this means hrs_worked and also performance_grade might be necessary attributes of the Employee type, which could be used when management is choosing who to promote, fire, or leave in their current position.</li>
+			</ul>
+			<p>Q: Justify using a Relational DBMS like Oracle for this project (Successfully design a relational database system, show the design in final report). </p>
+			<p>A: Phase III c-e should illustrate why a DBMS is helpful in creating this system. A DBMS not only allows our database to easily be updated after creation, but can accommodate different views for different levels of Employee.</p>
+
+			<h2>Database Design Visualizations</h2>
+			<h3>EER Diagram</h3>
+			<a href="diagrams/0.png" target="_blank">
+        		<img src="diagrams/0.png" alt="EER Diagram" width="500" />
+			</a>
+			<h3>3NF Forms</h3>
+			<a href="diagrams/1.png" target="_blank">
+        		<img src="diagrams/1.png" alt="3NF Forms" width="500" />
+			</a>
+			<h3>Dependency Diagram</h3>
+			<a href="diagrams/2.png" target="_blank">
+        		<img src="diagrams/2.png" alt="Dependency Diagram" width="500" />
+			</a>
+
+			<h2>SQL</h2>
+			<p>Use the Create Table statement to create the following tables:</p>
+			<pre><code>
+USE DB_Project;
+
+-- Create Customer Table
+	CREATE TABLE `Customer` (
+	customer_ID INT NOT NULL AUTO_INCREMENT,
+	first_name VARCHAR(50),
+	last_name VARCHAR(50),
+	gender VARCHAR(1),
+	address VARCHAR(100),
+	phone_number INT(10),
+	date_of_birth DATE,
+	PRIMARY KEY (customer_ID)
+);
+
+-- Create Order Table
+	CREATE TABLE `Order` (
+	order_number INT NOT NULL AUTO_INCREMENT,
+	created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+	total_price DECIMAL,
+	payment_method_ID INT NOT NULL,
+	customer_ID INT,
+	cashier_ID INT NOT NULL,
+	PRIMARY KEY (order_number),
+	FOREIGN KEY (payment_method_ID)
+		REFERENCES `Payment Method` (payment_method_ID),
+	FOREIGN KEY (customer_ID)
+		REFERENCES `Customer` (customer_ID),
+	FOREIGN KEY (cashier_ID)
+		REFERENCES `Employee` (employee_ID)
+);
+
+-- Create Payment Method Table
+CREATE TABLE `Payment Method` (
+	payment_method_ID INT NOT NULL AUTO_INCREMENT,
+	last_four_digits INT(4),
+	card_type VARCHAR(50),
+	PRIMARY KEY (payment_method_ID)
+);
+
+-- Create Product Table
+CREATE TABLE `Product` (
+	product_ID INT NOT NULL AUTO_INCREMENT,
+	product_name VARCHAR(50),
+	product_quantity INT,
+	price DECIMAL(10,2),
+	PRIMARY KEY (product_ID)
+);
+
+-- Create a junction table to show the relationship between product, order, and store
+CREATE TABLE `Order Product` (
+	order_number INT NOT NULL,
+	product_ID INT NOT NULL,
+	store_ID INT NOT NULL,
+	quantity INT,
+	PRIMARY KEY (order_number, product_ID, store_ID),
+	FOREIGN KEY (order_number)
+		REFERENCES `Order` (order_number)
+		ON DELETE CASCADE,
+	FOREIGN KEY (product_ID)
+		REFERENCES `Product` (product_ID)
+		ON DELETE CASCADE,
+	FOREIGN KEY (store_ID)
+		REFERENCES `Store` (store_ID)
+		ON DELETE CASCADE
+);
+
+-- Create a junction table to show the replationship between store and product
+CREATE TABLE `Store Product` (
+	product_ID INT NOT NULL,
+	store_ID INT NOT NULL,
+	quantity INT,
+	PRIMARY KEY (product_ID, store_ID),
+	FOREIGN KEY (product_ID)
+		REFERENCES `Product` (product_ID)
+		ON DELETE CASCADE,
+	FOREIGN KEY (store_ID)
+		REFERENCES `Store` (store_ID)
+		ON DELETE CASCADE
+);
+
+-- Create Store Table
+CREATE TABLE `Store` (
+	store_ID INT NOT NULL AUTO_INCREMENT,
+	store_type VARCHAR(20),
+	floor_ID INT,
+	store_name VARCHAR(50),
+	PRIMARY KEY (store_ID),
+	FOREIGN KEY (floor_ID)
+		REFERENCES `Floor` (floor_ID)
+);
+
+-- Create Floor Table
+	CREATE TABLE `Floor` (
+	floor_ID INT NOT NULL AUTO_INCREMENT,
+	PRIMARY KEY (floor_ID)
+);
+
+-- Create Schedule Table
+	CREATE TABLE Schedule (
+		schedule_ID INT NOT NULL AUTO_INCREMENT,
+		store_ID INT NOT NULL,
+		day_of_week ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'FrIDay', 'Saturday', 'Sunday') NOT NULL,
+		opening_time TIME NOT NULL,
+		closing_time TIME NOT NULL,
+		PRIMARY KEY (schedule_ID),
+		FOREIGN KEY (store_ID)
+			REFERENCES `Store` (store_ID)
+);
+
+-- Create Floor Maintaing Log
+CREATE TABLE `Floor Log` (
+	log_ID INT NOT NULL AUTO_INCREMENT,
+	floor_ID INT NOT NULL,
+	floor_staff_ID INT NOT NULL,
+	log_date DATE NOT NULL,
+	PRIMARY KEY (log_ID),
+	FOREIGN KEY (floor_staff_ID)
+		REFERENCES Employee (employee_ID),
+	FOREIGN KEY (floor_ID)
+		REFERENCES Floor (floor_ID)
+);
+
+-- Create Employee Table
+CREATE TABLE Employee (
+	employee_ID INT NOT NULL AUTO_INCREMENT,
+	first_name VARCHAR(50),
+	last_name VARCHAR(50),
+	date_of_birth DATE,
+	start_date DATE,
+	SSN VARCHAR(9),
+	address VARCHAR(100),
+	salary DECIMAL(10 , 2 ),
+	phone_number VARCHAR(10),
+	supervisor_ID INT,
+	employee_type ENUM('Manager', 'Floor Staff', 'Cashier'),
+	PRIMARY KEY (employee_ID),
+	FOREIGN KEY (supervisor_ID)
+		REFERENCES Employee (employee_ID)
+);
+
+			</code></pre>
+			<p>Use the Create View statement to create the following views:</p>
+			<p><b>Popular-Product</b>: This view returns the information of the most popular product that been sold the most in the whole mall in past 1 month.</p>
+			<code><pre>
+CREATE VIEW `popular_product` AS
+	SELECT
+		`p`.`product_ID` AS `product_ID`,
+		`p`.`product_name` AS `product_name`,
+		SUM(`op`.`quantity`) AS `total_quantity`
+	FROM
+		((`product` `p`
+		JOIN `order product` `op` ON ((`op`.`product_id` = `p`.`product_ID`)))
+		JOIN `order` `o` ON ((`o`.`order_number` = `op`.`order_number`)))
+	WHERE
+		(`o`.`created_time` >= (NOW() - INTERVAL 1 MONTH))
+	GROUP BY `p`.`product_ID` , `p`.`product_name`
+	ORDER BY `total_quantity` DESC
+	LIMIT 1
+			</code></pre>
+
+			<p><b>Gold-Store</b>: This view returns the information of the store that has the most number of distinct customers that placed order in past 1 month.</p>
+			<code><pre>
+CREATE VIEW `gold_store` AS
+	SELECT
+		`s`.`store_ID` AS `store_ID`,
+		`s`.`store_name` AS `store_name`,
+		COUNT(DISTINCT `o`.`customer_ID`) AS `number_of_customers`
+	FROM
+		((`store` `s`
+		JOIN `order product` `op` ON ((`op`.`store_id` = `s`.`store_ID`)))
+		JOIN `order` `o` ON ((`o`.`order_number` = `op`.`order_number`)))
+	WHERE
+		(`o`.`created_time` >= (NOW() - INTERVAL 1 MONTH))
+	GROUP BY `s`.`store_ID` , `s`.`store_type`
+	ORDER BY `number_of_customers` DESC
+	LIMIT 1
+			</code></pre>
+
+			<p><b>Top-Quarter-Cashier</b>: This view returns the information of the cashier who have dealt with the most number of orders in the past 3 months.</p>
+			<code><pre>
+CREATE VIEW `top_quarter_cashier` AS
+	SELECT
+		`e`.`employee_ID` AS `employee_ID`,
+		`e`.`first_name` AS `first_name`,
+		`e`.`last_name` AS `last_name`,
+		COUNT(`o`.`order_number`) AS `number_of_orders`
+	FROM
+		(`employee` `e`
+		JOIN `order` `o` ON ((`e`.`employee_ID` = `o`.`cashier_ID`)))
+	WHERE
+		(`o`.`created_time` >= (NOW() - INTERVAL 3 MONTH))
+	GROUP BY `e`.`employee_ID`
+	ORDER BY `number_of_orders` DESC
+	LIMIT 1
+			</code></pre>
+			<script>
+const generateTOC = () => {
+  const tocContainer = document.getElementById('toc');
+  const headers = document.querySelectorAll('h2, h3, h4, h5, h6');
+  const tocList = document.createElement('ul');
+  
+  let currentLevel = 2; // Start at h2 level
+  let currentList = tocList;
+  let listStack = [tocList]; // Stack to keep track of nested lists
+  
+  headers.forEach(header => {
+    // Generate ID if not present
+    if (!header.id) {
+      header.id = header.textContent
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-') // Handle special characters better
+        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    }
+    
+    const level = parseInt(header.tagName[1]);
+    const tocItem = document.createElement('li');
+    const tocLink = document.createElement('a');
+    
+    // Set up the link
+    tocLink.textContent = header.textContent;
+    tocLink.href = `#${header.id}`;
+    
+    // Add smooth scrolling behavior
+    tocLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById(header.id).scrollIntoView({
+        behavior: 'smooth'
+      });
+      // Update URL without jumping
+      history.pushState(null, null, `#${header.id}`);
+    });
+    
+    tocItem.appendChild(tocLink);
+    
+    // Handle hierarchy
+    if (level > currentLevel) {
+      // Create new nested list
+      const nestedList = document.createElement('ul');
+      listStack[listStack.length - 1].lastElementChild.appendChild(nestedList);
+      listStack.push(nestedList);
+      currentList = nestedList;
+    } else if (level < currentLevel) {
+      // Move back up the hierarchy
+      while (level < currentLevel && listStack.length > 1) {
+        listStack.pop();
+        currentLevel--;
+      }
+      currentList = listStack[listStack.length - 1];
+    }
+    
+    // Add the item to the current list
+    currentList.appendChild(tocItem);
+    currentLevel = level;
+  });
+  
+  // Clear existing content and append new TOC
+  tocContainer.innerHTML = '';
+  tocContainer.appendChild(tocList);
+};
+
+// Call the function when DOM is ready
+document.addEventListener('DOMContentLoaded', generateTOC);
+			  </script>
+        </section>
+    </main>
+    </div>
+</body>
+</html>
